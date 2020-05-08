@@ -1,0 +1,9 @@
+[GROUP_1]
+ubn-srv-1 ansible_host=192.168.10.11
+
+[GROUP_2]
+ubn-srv-2 ansible_host=192.168.10.22
+
+[GROUP_12:children]
+GROUP_1
+GROUP_2

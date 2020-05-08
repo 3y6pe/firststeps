@@ -1,0 +1,101 @@
+---
+- name: General Playbook
+  hosts: all
+  become: yes
+  vars:
+    - image_name: nginx
+    - container_name: mynginx_container
+    - custom_html_dest: /home/odmin/docker/custom_html
+
+  tasks:
+    - name: Install aptitude using apt
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+    - name: Install requirements
+      apt: 
+        name: ['python3-setuptools', 'apt-transport-https', 'ca-certificates', 'curl', 'gnupg-agent', 'software-properties-common', 'virtualenv', 'python3-pip', 'openjdk-8-jre', 'python-pip']
+        state: latest
+        update_cache: yes
+     
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt: update_cache=yes name=docker-ce state=latest
+
+    - name: Install Docker Compose
+      pip:
+        name: docker-compose
+
+
+    - block:   #=======RUN DOCKER ON ubn-srv-1========
+
+        - name: Create html folder
+          file:
+            path: "{{ custom_html_dest }}"
+            state: directory
+            mode: '0555'
+
+        - name: Copy files to html folder
+          copy:
+            src: /home/abc/Projects/ansible_project/custom_html/{{ item }}
+            dest: "{{ custom_html_dest }}"
+          with_items:
+            - "docker.png"
+            - "nginx.png"
+
+        - name: Generate custom html
+          template: src=/home/abc/Projects/ansible_project/custom_html/custom_html.j2 dest={{ custom_html_dest }}/index.html mode=0555
+          notify: Restart Docker container
+
+        - name: Build image
+          docker_image:
+            name: "{{ image_name }}"
+            source: pull
+
+        - name: Run the container
+          docker_container:
+            name: "{{ container_name }}"
+            image: "{{ image_name }}"
+            volumes:
+              "{{ custom_html_dest }}:/usr/share/nginx/html"
+            ports:
+              "8080:80"
+            state: started
+
+      when: ansible_hostname == "ubn-srv-1"
+
+    - block:   #=======INSTALL JENKINS on ubn-srv-2========
+
+       - name: Add Jenkins Key
+         apt_key:
+           url: https://pkg.jenkins.io/debian-stable/jenkins.io.key
+           state: present 
+
+       - name: Add Jenkins Repository
+         apt_repository:
+           repo: deb https://pkg.jenkins.io/debian-stable binary/
+           state: present
+
+       - name: Install Jenkins
+         apt: update_cache=yes name=jenkins state=latest
+
+       - name: Enable Jenkins
+         service:
+           name: jenkins
+           enabled: yes
+
+      when: ansible_hostname == "ubn-srv-2"
+
+  handlers:
+    - name: Restart Docker container
+      docker_container:
+        name: "{{ container_name }}"
+        restart: true
