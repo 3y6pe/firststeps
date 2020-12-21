@@ -267,7 +267,7 @@ class Round:
                 actions = ["BJ"]
             elif self.player.current_bet * 2 <= self.player.bankroll:
                 actions = ["Hit", "Double Down", "Stand"]
-                if self.player.hand[0].points == self.player.hand[1].points and self.player.hand[0]:
+                if self.player.hand[0].points == self.player.hand[1].points:
                     actions = ["Hit", "Split", "Double Down", "Stand"]
             else:
                 actions = ["Hit", "Stand"]
@@ -375,7 +375,7 @@ class Round:
             self.player.reset_bet()
             self._print_final_table()
             self.player.hand = []
-            self.split_hand = []
+            self.player.split_hand = []
             print('\n')
             time.sleep(5)
         self.players[-1].hand = []
